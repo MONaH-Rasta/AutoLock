@@ -11,7 +11,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.4.0")]
+    [Info("Auto Lock", "birthdates", "2.4.1")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -40,7 +40,7 @@ namespace Oxide.Plugins
 
             cmd.AddChatCommand("autolock", this, ChatCommand);
             cmd.AddChatCommand("al", this, ChatCommand);
-            if(_config.CodeLockExpiry < 0f) Unsubscribe(nameof(OnServerInitialized));
+            if(_config.CodeLockExpiry <= 0f) Unsubscribe(nameof(OnServerInitialized));
         }
 
         [UsedImplicitly]
@@ -66,7 +66,7 @@ namespace Oxide.Plugins
             var entity = go.ToBaseEntity() as DecayEntity;
             if (entity == null || _config.Disabled.Contains(entity.PrefabName)) return;
             var container = entity as StorageContainer;
-            if (container != null && container.inventorySlots < 12 || !container && !(entity is AnimatedBuildingBlock) || entity.IsLocked()) return;
+            if (entity.IsLocked() || container != null && container.inventorySlots < 12 || !container && !(entity is AnimatedBuildingBlock)) return;
             if (_noEscape != null)
             {
                 if (_config.NoEscapeSettings.BlockRaid && _noEscape.Call<bool>("IsRaidBlocked", player.UserIDString))
