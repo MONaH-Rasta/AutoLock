@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.1.2")]
+    [Info("Auto Lock", "birthdates", "2.1.3")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -44,7 +44,6 @@ namespace Oxide.Plugins
                 {
                     Code = GetRandomCode(),
                     Enabled = true,
-                    Hidden = false
                 });
             }
             var pCode = _data.Codes[Player.UserIDString];
@@ -65,7 +64,7 @@ namespace Oxide.Plugins
                     Effect.server.Run("assets/prefabs/locks/keypad/effects/lock-code-deploy.prefab", Code.transform.position);
                     Code.whitelistPlayers.Add(Player.userID);
                     TakeCodeLock(Player);
-                    if (!pCode.Hidden) Player.ChatMessage(string.Format(lang.GetMessage("CodeAdded", this, Player.UserIDString), pCode.Code));
+                    Player.ChatMessage(string.Format(lang.GetMessage("CodeAdded", this, Player.UserIDString), Player.net.connection.info.GetBool("global.streamermode") ? "****" : pCode.Code));
                 }
             }
         }
@@ -107,7 +106,6 @@ namespace Oxide.Plugins
                 {
                     Code = GetRandomCode(),
                     Enabled = true,
-                    Hidden = false
                 });
             }
             switch (Args[0].ToLower())
@@ -117,9 +115,6 @@ namespace Oxide.Plugins
                     break;
                 case "toggle":
                     Player.ChatMessage(lang.GetMessage(Toggle(Player) ? "Enabled" : "Disabled", this, Player.UserIDString));
-                    break;
-                case "hide":
-                    Player.ChatMessage(string.Format(lang.GetMessage("VisibilityToggled", this, Player.UserIDString), ToggleVis(Player) ? "hidden" : "visible"));
                     break;
                 default:
                     Player.ChatMessage(string.Format(lang.GetMessage("InvalidArgs", this, Player.UserIDString), Label));
@@ -169,7 +164,7 @@ namespace Oxide.Plugins
                 }
                 var pData = _data.Codes[player.UserIDString];
                 pData.Code = code;
-                if (!pData.Hidden) player.ChatMessage(string.Format(lang.GetMessage("CodeUpdated", this, player.UserIDString), code));
+                player.ChatMessage(string.Format(lang.GetMessage("CodeUpdated", this, player.UserIDString), player.net.connection.info.GetBool("global.streamermode") ? "****" : code));
 
                 var Prefab = A.effectCodeChanged;
                 if (!A.IsDestroyed) A.Kill();
@@ -191,14 +186,6 @@ namespace Oxide.Plugins
             Data.Enabled = newToggle;
             return newToggle;
         }
-
-        bool ToggleVis(BasePlayer Player)
-        {
-            var Data = _data.Codes[Player.UserIDString];
-            var newVis = !Data.Hidden;
-            Data.Hidden = newVis;
-            return newVis;
-        }
         #endregion
 
         #region Configuration & Language
@@ -209,7 +196,6 @@ namespace Oxide.Plugins
         {
             public string Code;
             public bool Enabled;
-            public bool Hidden;
         }
 
         public class Data
@@ -227,7 +213,6 @@ namespace Oxide.Plugins
                 {"Enabled", "You have enabled auto locks."},
                 {"CodeUpdated", "Your new code is {0}."},
                 {"NoPermission", "You don't have permission."},
-                {"VisibilityToggled", "Codelock messages are now {0}"},
                 {"InvalidArgs", "/{0} code|toggle|hide"}
             }, this);
         }
