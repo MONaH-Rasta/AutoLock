@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.1.6")]
+    [Info("Auto Lock", "birthdates", "2.1.7")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -67,7 +67,7 @@ namespace Oxide.Plugins
             }
         }
 
-        string GetRandomCode() => Core.Random.Range(0, 9999).ToString();
+        string GetRandomCode() => Core.Random.Range(1000, 9999).ToString();
 
         void OnServerShutdown() => Unload();
 
