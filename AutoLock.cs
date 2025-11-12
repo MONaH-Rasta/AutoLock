@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.1.3")]
+    [Info("Auto Lock", "birthdates", "2.1.4")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -47,14 +47,13 @@ namespace Oxide.Plugins
                 });
             }
             var pCode = _data.Codes[Player.UserIDString];
-            if (!pCode.Enabled) return;
-            if (!HasCodeLock(Player)) return;
-            if (Entity is StorageContainer || Entity is AnimatedBuildingBlock)
+            if (!pCode.Enabled || !HasCodeLock(Player)) return;
+            var S = Entity as StorageContainer;
+            if(S?.inventorySlots < 12) return;
+            if (S || Entity is AnimatedBuildingBlock)
             {
                 if (!Entity.IsLocked())
                 {
-
-
                     var Code = GameManager.server.CreateEntity("assets/prefabs/locks/keypad/lock.code.prefab") as CodeLock;
                     Code.Spawn();
                     Code.code = pCode.Code;
