@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.1.8")]
+    [Info("Auto Lock", "birthdates", "2.1.9")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -114,15 +114,9 @@ namespace Oxide.Plugins
             }
         }
 
-        private bool HasCodeLock(BasePlayer Player)
-        {
-            return Player.inventory.FindItemID(1159991980) != null;
-        }
+        private bool HasCodeLock(BasePlayer Player) => Player.inventory.FindItemID(1159991980) != null;
 
-        private void TakeCodeLock(BasePlayer Player)
-        {
-            Player.inventory.Take(null, 1159991980, 1);
-        }
+        private void TakeCodeLock(BasePlayer Player) => Player.inventory.Take(null, 1159991980, 1);
 
         private void OpenCodeLockUI(BasePlayer Player)
         {
@@ -222,10 +216,7 @@ namespace Oxide.Plugins
             }
         }
 
-        private void SaveData()
-        {
-            Interface.Oxide.DataFileSystem.WriteObject(Name, _data);
-        }
+        private void SaveData() => Interface.Oxide.DataFileSystem.WriteObject(Name, _data);
 
         protected override void LoadConfig()
         {
