@@ -11,7 +11,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.4.3")]
+    [Info("Auto Lock", "birthdates", "2.4.4")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -41,6 +41,7 @@ namespace Oxide.Plugins
         {
             LoadConfig();
             permission.RegisterPermission(PermissionUse, this);
+            permission.RegisterPermission(PermissionItemBypass, this);
             _data = Interface.Oxide.DataFileSystem.ReadObject<Data>(Name);
 
             cmd.AddChatCommand("autolock", this, ChatCommand);
