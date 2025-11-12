@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
@@ -11,7 +11,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.4.4")]
+    [Info("Auto Lock", "birthdates", "2.4.5")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -179,7 +179,7 @@ namespace Oxide.Plugins
 
         private static bool HasCodeLock(BasePlayer player)
         {
-            return player.IPlayer.HasPermission(PermissionItemBypass) || player.inventory.FindItemID(1159991980) != null;
+            return player.IPlayer.HasPermission(PermissionItemBypass) || player.inventory.FindItemByItemID(1159991980) != null;
         }
 
         private static void TakeCodeLock(BasePlayer player)
