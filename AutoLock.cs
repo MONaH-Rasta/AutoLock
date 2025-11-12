@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.1.0")]
+    [Info("Auto Lock", "birthdates", "2.1.1")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -163,8 +163,9 @@ namespace Oxide.Plugins
                     AwaitingResponse.Remove(player);
                     return null;
                 }
-                _data.Codes[player.UserIDString].Code = code;
-                player.ChatMessage(string.Format(lang.GetMessage("CodeUpdated", this, player.UserIDString), code));
+                var pData = _data.Codes[player.UserIDString];
+                pData.Code = code;
+                if (!pData.Hidden) player.ChatMessage(string.Format(lang.GetMessage("CodeUpdated", this, player.UserIDString), code));
 
                 var Prefab = A.effectCodeChanged;
                 if (!A.IsDestroyed) A.Kill();
