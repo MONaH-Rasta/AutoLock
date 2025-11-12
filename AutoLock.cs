@@ -8,7 +8,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.3.1")]
+    [Info("Auto Lock", "birthdates", "2.3.2")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -39,7 +39,10 @@ namespace Oxide.Plugins
             if (!permission.UserHasPermission(player.UserIDString, permission_use)) return;
             var Entity = go.ToBaseEntity() as DecayEntity;
             if (Entity == null || _config.Disabled.Contains(Entity.PrefabName)) return;
-
+            var S = Entity as StorageContainer;
+            if (S?.inventorySlots < 12) return;
+            if (!S && !(Entity is AnimatedBuildingBlock)) return;
+            if (Entity.IsLocked()) return;
             if (NoEscape != null)
             {
                 if (_config.NoEscapeSettings.BlockRaid && NoEscape.Call<bool>("IsRaidBlocked", player.UserIDString))
@@ -63,10 +66,6 @@ namespace Oxide.Plugins
                 });
             var pCode = _data.Codes[player.UserIDString];
             if (!pCode.Enabled || !HasCodeLock(player)) return;
-            var S = Entity as StorageContainer;
-            if (S?.inventorySlots < 12) return;
-            if (!S && !(Entity is AnimatedBuildingBlock)) return;
-            if (Entity.IsLocked()) return;
             var Code = GameManager.server.CreateEntity("assets/prefabs/locks/keypad/lock.code.prefab") as CodeLock;
 			if (Code != null)
 			{
