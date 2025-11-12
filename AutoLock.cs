@@ -8,7 +8,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.3.0")]
+    [Info("Auto Lock", "birthdates", "2.3.1")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -68,18 +68,18 @@ namespace Oxide.Plugins
             if (!S && !(Entity is AnimatedBuildingBlock)) return;
             if (Entity.IsLocked()) return;
             var Code = GameManager.server.CreateEntity("assets/prefabs/locks/keypad/lock.code.prefab") as CodeLock;
-            if (Code != null)
-            {
-                Code.Spawn();
-                Code.code = pCode.Code;
-                Code.SetParent(Entity, Entity.GetSlotAnchorName(BaseEntity.Slot.Lock));
-                Entity.SetSlot(BaseEntity.Slot.Lock, Code);
-                Code.SetFlag(BaseEntity.Flags.Locked, true);
-                Effect.server.Run("assets/prefabs/locks/keypad/effects/lock-code-deploy.prefab",
-                    Code.transform.position);
-                Code.whitelistPlayers.Add(player.userID);
-            }
-
+			if (Code != null)
+			{
+			    Code.gameObject.Identity();
+			    Code.SetParent(Entity, Entity.GetSlotAnchorName(BaseEntity.Slot.Lock));
+			    Code.Spawn();
+			    Code.code = pCode.Code;
+			    Code.hasCode = true;
+			    Entity.SetSlot(BaseEntity.Slot.Lock, Code);
+			    Effect.server.Run("assets/prefabs/locks/keypad/effects/lock-code-deploy.prefab", Code.transform.position);
+			    Code.whitelistPlayers.Add(player.userID);
+			    Code.SetFlag(BaseEntity.Flags.Locked, true);
+			}
             TakeCodeLock(player);
             player.ChatMessage(string.Format(lang.GetMessage("CodeAdded", this, player.UserIDString),
                 player.net.connection.info.GetBool("global.streamermode") ? "****" : pCode.Code));
