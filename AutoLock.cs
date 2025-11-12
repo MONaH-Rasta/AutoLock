@@ -11,7 +11,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.4.5")]
+    [Info("Auto Lock", "birthdates", "2.4.6")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -104,7 +104,10 @@ namespace Oxide.Plugins
                 entity.SetSlot(BaseEntity.Slot.Lock, code);
                 Effect.server.Run("assets/prefabs/locks/keypad/effects/lock-code-deploy.prefab",
                     code.transform.position);
-                code.whitelistPlayers.Add(player.userID);
+                if (!code.whitelistPlayers.Contains(player.userID))
+                {
+                    code.whitelistPlayers.Add(player.userID);
+                }
                 code.SetFlag(BaseEntity.Flags.Locked, true);
             }
 
