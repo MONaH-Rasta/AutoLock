@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.1.9")]
+    [Info("Auto Lock", "birthdates", "2.2.0")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -53,18 +53,23 @@ namespace Oxide.Plugins
             if (!S && !(Entity is AnimatedBuildingBlock)) return;
             if (Entity.IsLocked()) return;
             var Code = GameManager.server.CreateEntity("assets/prefabs/locks/keypad/lock.code.prefab") as CodeLock;
-            Code.Spawn();
-            Code.code = pCode.Code;
-            Code.SetParent(Entity, Entity.GetSlotAnchorName(BaseEntity.Slot.Lock));
-            Entity.SetSlot(BaseEntity.Slot.Lock, Code);
-            Code.SetFlag(BaseEntity.Flags.Locked, true);
-            Effect.server.Run("assets/prefabs/locks/keypad/effects/lock-code-deploy.prefab", Code.transform.position);
-            Code.whitelistPlayers.Add(Player.userID);
+            if (Code != null)
+            {
+                Code.Spawn();
+                Code.code = pCode.Code;
+                Code.SetParent(Entity, Entity.GetSlotAnchorName(BaseEntity.Slot.Lock));
+                Entity.SetSlot(BaseEntity.Slot.Lock, Code);
+                Code.SetFlag(BaseEntity.Flags.Locked, true);
+                Effect.server.Run("assets/prefabs/locks/keypad/effects/lock-code-deploy.prefab",
+                    Code.transform.position);
+                Code.whitelistPlayers.Add(Player.userID);
+            }
+
             TakeCodeLock(Player);
             Player.ChatMessage(string.Format(lang.GetMessage("CodeAdded", this, Player.UserIDString), Player.net.connection.info.GetBool("global.streamermode") ? "****" : pCode.Code));
         }
 
-        private string GetRandomCode() => Core.Random.Range(1000, 9999).ToString();
+        private static string GetRandomCode() => Core.Random.Range(1000, 9999).ToString();
 
         private void OnServerShutdown() => Unload();
 
@@ -114,37 +119,39 @@ namespace Oxide.Plugins
             }
         }
 
-        private bool HasCodeLock(BasePlayer Player) => Player.inventory.FindItemID(1159991980) != null;
+        private static bool HasCodeLock(BasePlayer Player) => Player.inventory.FindItemID(1159991980) != null;
 
-        private void TakeCodeLock(BasePlayer Player) => Player.inventory.Take(null, 1159991980, 1);
+        private static void TakeCodeLock(BasePlayer Player) => Player.inventory.Take(null, 1159991980, 1);
 
-        private void OpenCodeLockUI(BasePlayer Player)
+        private void OpenCodeLockUI(BasePlayer player)
         {
-            var Lock = GameManager.server.CreateEntity("assets/prefabs/locks/keypad/lock.code.prefab", Player.eyes.position + new Vector3(0, -3, 0)) as CodeLock;
+            var Lock = GameManager.server.CreateEntity("assets/prefabs/locks/keypad/lock.code.prefab", player.eyes.position + new Vector3(0, -3, 0)) as CodeLock;
+            if (Lock == null) return;
             Lock.Spawn();
             Lock.SetFlag(BaseEntity.Flags.Locked, true);
-            Lock.ClientRPCPlayer(null, Player, "EnterUnlockCode");
-            if (AwaitingResponse.ContainsKey(Player)) AwaitingResponse.Remove(Player);
-            AwaitingResponse.Add(Player, Lock);
+            Lock.ClientRPCPlayer(null, player, "EnterUnlockCode");
+            if (AwaitingResponse.ContainsKey(player)) AwaitingResponse.Remove(player);
+            AwaitingResponse.Add(player, Lock);
             if (AwaitingResponse.Count == 1)
             {
                 Subscribe("OnCodeEntered");
             }
+
             timer.In(20f, () =>
             {
                 if (!Lock.IsDestroyed) Lock.Kill();
             });
         }
 
-        private object OnCodeEntered(CodeLock codeLock, BasePlayer player, string code)
+        private void OnCodeEntered(CodeLock codeLock, BasePlayer player, string code)
         {
-            if (!AwaitingResponse.ContainsKey(player)) return null;
+            if (player == null || !AwaitingResponse.ContainsKey(player)) return;
             var A = AwaitingResponse[player];
             if (A != codeLock)
             {
                 if (!A.IsDestroyed) A.Kill();
                 AwaitingResponse.Remove(player);
-                return null;
+                return;
             }
             var pData = _data.Codes[player.UserIDString];
             pData.Code = code;
@@ -159,7 +166,7 @@ namespace Oxide.Plugins
             {
                 Unsubscribe("OnCodeEntered");
             }
-            return null;
+            return;
         }
 
         private bool Toggle(BasePlayer Player)
