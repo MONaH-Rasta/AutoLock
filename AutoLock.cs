@@ -11,7 +11,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.4.2")]
+    [Info("Auto Lock", "birthdates", "2.4.3")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -178,7 +178,7 @@ namespace Oxide.Plugins
 
         private static bool HasCodeLock(BasePlayer player)
         {
-            return player.IPlayer.HasPermission(PermissionItemBypass) || player.inventory.FindItemID(1159991980) != null);
+            return player.IPlayer.HasPermission(PermissionItemBypass) || player.inventory.FindItemID(1159991980) != null;
         }
 
         private static void TakeCodeLock(BasePlayer player)
