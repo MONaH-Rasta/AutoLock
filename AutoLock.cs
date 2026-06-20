@@ -6,12 +6,11 @@ using Newtonsoft.Json;
 using Oxide.Core;
 using Oxide.Core.Plugins;
 using UnityEngine;
-using Object = UnityEngine.Object;
 using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.4.6")]
+    [Info("Auto Lock", "birthdates", "2.4.7")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -20,17 +19,8 @@ namespace Oxide.Plugins
         private const string PermissionUse = "autolock.use";
         private const string PermissionItemBypass = "autolock.item.bypass";
 
-        private readonly Dictionary<BasePlayer, TimedCodeLock> _awaitingResponse =
-            new Dictionary<BasePlayer, TimedCodeLock>();
-
         [UsedImplicitly] [PluginReference("NoEscape")]
         private Plugin _noEscape;
-
-        private struct TimedCodeLock
-        {
-            public CodeLock CodeLock { get; set; }
-            public DateTime Expiry { get; set; }
-        }
 
         #endregion
 
@@ -46,21 +36,6 @@ namespace Oxide.Plugins
 
             cmd.AddChatCommand("autolock", this, ChatCommand);
             cmd.AddChatCommand("al", this, ChatCommand);
-            if (_config.CodeLockExpiry <= 0f) Unsubscribe(nameof(OnServerInitialized));
-        }
-
-        [UsedImplicitly]
-        private void OnServerInitialized()
-        {
-            timer.Every(3f, () =>
-            {
-                for (var i = _awaitingResponse.Count - 1; i > 0; i--)
-                {
-                    var timedLock = _awaitingResponse.ElementAt(i);
-                    if (timedLock.Value.Expiry > DateTime.UtcNow) continue;
-                    _awaitingResponse.Remove(timedLock.Key);
-                }
-            });
         }
 
         [UsedImplicitly]
@@ -74,24 +49,26 @@ namespace Oxide.Plugins
             var container = entity as StorageContainer;
             if (entity.IsLocked() || container != null && container.inventorySlots < 12 ||
                 !container && !(entity is AnimatedBuildingBlock)) return;
+            var playerData = CreateDataIfAbsent(player.UserIDString);
             if (_noEscape != null)
             {
                 if (_config.NoEscapeSettings.BlockRaid && _noEscape.Call<bool>("IsRaidBlocked", player.UserIDString))
                 {
-                    player.ChatMessage(lang.GetMessage("RaidBlocked", this, player.UserIDString));
+                    if (!playerData.Hidden)
+                        player.ChatMessage(lang.GetMessage("RaidBlocked", this, player.UserIDString));
                     return;
                 }
 
                 if (_config.NoEscapeSettings.BlockCombat &&
                     _noEscape.Call<bool>("IsCombatBlocked", player.UserIDString))
                 {
-                    player.ChatMessage(lang.GetMessage("CombatBlocked", this, player.UserIDString));
+                    if (!playerData.Hidden)
+                        player.ChatMessage(lang.GetMessage("CombatBlocked", this, player.UserIDString));
                     return;
                 }
             }
 
 
-            var playerData = CreateDataIfAbsent(player.UserIDString);
             if (!playerData.Enabled || !HasCodeLock(player)) return;
             var code = GameManager.server.CreateEntity("assets/prefabs/locks/keypad/lock.code.prefab") as CodeLock;
             if (code != null)
@@ -112,8 +89,9 @@ namespace Oxide.Plugins
             }
 
             TakeCodeLock(player);
-            player.ChatMessage(string.Format(lang.GetMessage("CodeAdded", this, player.UserIDString),
-                player.net.connection.info.GetBool("global.streamermode") ? "****" : playerData.Code));
+            if (!playerData.Hidden)
+                player.ChatMessage(string.Format(lang.GetMessage("CodeAdded", this, player.UserIDString),
+                    player.net.connection.info.GetBool("global.streamermode") ? "****" : playerData.Code));
         }
 
         private static string GetRandomCode()
@@ -130,8 +108,6 @@ namespace Oxide.Plugins
         private void Unload()
         {
             SaveData();
-            foreach (var timedLock in _awaitingResponse.Values.Where(timedLock => !timedLock.CodeLock.IsDestroyed))
-                timedLock.CodeLock.Kill();
         }
 
         private PlayerData CreateDataIfAbsent(string id)
@@ -168,10 +144,14 @@ namespace Oxide.Plugins
             switch (args[0].ToLower())
             {
                 case "code":
-                    OpenCodeLockUI(player);
+                    SetCode(player, args.Length > 1 ? args[1] : null);
                     break;
                 case "toggle":
                     player.ChatMessage(lang.GetMessage(Toggle(player) ? "Enabled" : "Disabled", this,
+                        player.UserIDString));
+                    break;
+                case "hide":
+                    player.ChatMessage(lang.GetMessage(ToggleHide(player) ? "HideEnabled" : "HideDisabled", this,
                         player.UserIDString));
                     break;
                 default:
@@ -191,49 +171,19 @@ namespace Oxide.Plugins
                 player.inventory.Take(null, 1159991980, 1);
         }
 
-        private void OpenCodeLockUI(BasePlayer player)
+        private void SetCode(BasePlayer player, string code)
         {
-            var codeLock = GameManager.server.CreateEntity("assets/prefabs/locks/keypad/lock.code.prefab",
-                player.eyes.position + new Vector3(0, -3, 0)) as CodeLock;
-            if (codeLock == null) return;
-            codeLock.Spawn();
-            codeLock.SetFlag(BaseEntity.Flags.Locked, true);
-            codeLock.ClientRPCPlayer(null, player, "EnterUnlockCode");
-            if (_awaitingResponse.ContainsKey(player)) _awaitingResponse.Remove(player);
-            _awaitingResponse.Add(player,
-                new TimedCodeLock {CodeLock = codeLock, Expiry = DateTime.UtcNow.AddSeconds(_config.CodeLockExpiry)});
-            if (_awaitingResponse.Count == 1) Subscribe("OnCodeEntered");
-
-            timer.In(20f, () =>
+            if (string.IsNullOrEmpty(code) || code.Length != 4 || !code.All(char.IsDigit))
             {
-                if (!codeLock.IsDestroyed) codeLock.Kill();
-            });
-        }
-
-        [UsedImplicitly]
-        private void OnCodeEntered(Object codeLock, BasePlayer player, string code)
-        {
-            TimedCodeLock timedCodeLock;
-            if (player == null || !_awaitingResponse.TryGetValue(player, out timedCodeLock)) return;
-            var playerCodeLock = timedCodeLock.CodeLock;
-            if (playerCodeLock != codeLock)
-            {
-                if (!playerCodeLock.IsDestroyed) playerCodeLock.Kill();
-                _awaitingResponse.Remove(player);
+                player.ChatMessage(lang.GetMessage("InvalidCode", this, player.UserIDString));
                 return;
             }
 
             var pData = _data.Codes[player.UserIDString];
             pData.Code = code;
-            player.ChatMessage(string.Format(lang.GetMessage("CodeUpdated", this, player.UserIDString),
-                player.net.connection.info.GetBool("global.streamermode") ? "****" : code));
-
-            var prefab = playerCodeLock.effectCodeChanged;
-            if (!playerCodeLock.IsDestroyed) playerCodeLock.Kill();
-            _awaitingResponse.Remove(player);
-
-            Effect.server.Run(prefab.resourcePath, player.transform.position);
-            if (_awaitingResponse.Count < 1) Unsubscribe("OnCodeEntered");
+            if (!pData.Hidden)
+                player.ChatMessage(string.Format(lang.GetMessage("CodeUpdated", this, player.UserIDString),
+                    player.net.connection.info.GetBool("global.streamermode") ? "****" : code));
         }
 
         private bool Toggle(BasePlayer player)
@@ -242,6 +192,13 @@ namespace Oxide.Plugins
             var newToggle = !data.Enabled;
             data.Enabled = newToggle;
             return newToggle;
+        }
+
+        private bool ToggleHide(BasePlayer player)
+        {
+            var data = _data.Codes[player.UserIDString];
+            data.Hidden = !data.Hidden;
+            return data.Hidden;
         }
 
         #endregion
@@ -255,6 +212,7 @@ namespace Oxide.Plugins
         {
             public string Code;
             public bool Enabled;
+            public bool Hidden;
         }
 
         private class Data
@@ -269,9 +227,12 @@ namespace Oxide.Plugins
                 {"CodeAdded", "Codelock placed with code {0}."},
                 {"Disabled", "You have disabled auto locks."},
                 {"Enabled", "You have enabled auto locks."},
+                {"HideEnabled", "You have hidden auto lock notifications."},
+                {"HideDisabled", "You have shown auto lock notifications."},
                 {"CodeUpdated", "Your new code is {0}."},
+                {"InvalidCode", "Please enter a valid 4-digit code, e.g. /autolock code 1234"},
                 {"NoPermission", "You don't have permission."},
-                {"InvalidArgs", "/{0} code|toggle|hide"},
+                {"InvalidArgs", "/{0} code <1234>|toggle|hide"},
                 {"RaidBlocked", "The codelock wasn't automatically locked due to you being raid blocked!"},
                 {"CombatBlocked", "The codelock wasn't automatically locked due to you being combat blocked!"}
             }, this);
@@ -279,9 +240,6 @@ namespace Oxide.Plugins
 
         public class ConfigFile
         {
-            [JsonProperty("Code Lock Expiry Time (Seconds, put -1 if you want to disable)")]
-            public float CodeLockExpiry;
-
             [JsonProperty("Disabled Items (Prefabs)")]
             public List<string> Disabled;
 
@@ -295,7 +253,6 @@ namespace Oxide.Plugins
                     {
                         "assets/prefabs/deployable/large wood storage/box.wooden.large.prefab"
                     },
-                    CodeLockExpiry = 10f,
                     NoEscapeSettings = new NoEscapeSettings
                     {
                         BlockCombat = true,
