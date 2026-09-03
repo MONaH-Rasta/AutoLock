@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
@@ -10,7 +10,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Auto Lock", "birthdates", "2.4.7")]
+    [Info("Auto Lock", "birthdates", "2.4.8")]
     [Description("Automatically adds a codelock to a lockable entity with a set pin")]
     public class AutoLock : RustPlugin
     {
@@ -85,7 +85,10 @@ namespace Oxide.Plugins
                 {
                     code.whitelistPlayers.Add(player.userID);
                 }
-                code.SetFlag(BaseEntity.Flags.Locked, true);
+                using (var flags = code.StartSetFlags(BaseEntity.FlagsUpdateMode.SendNetworkUpdate))
+                {
+                    flags.Set(BaseEntity.Flags.Locked, true);
+                }
             }
 
             TakeCodeLock(player);
